@@ -13,6 +13,13 @@ Use this when:
 - the folder has been uploaded or preserved externally
 - rebuilding from scratch would be slower or riskier
 
+In our case, disk limits on the VPS meant the snapshot workflow had to be done in stages:
+- download the snapshot to a local PC first
+- unpack it on the PC instead of on the VPS
+- upload the unpacked datadir to the VPS afterward
+
+That was slower operationally, but it avoided blowing up the VPS disk during download and extraction.
+
 Critical rule:
 - verify the existing datadir mount before you do anything destructive
 
@@ -50,3 +57,12 @@ During a healthy startup you should expect:
 - `exec: "geth": executable file not found in $PATH`
 - repeated auth issues between op-node and Engine API
 - no head movement while public Shape RPC continues advancing
+
+## Hardfork note: Jovian
+
+One of the important lessons from this setup was that Jovian needed to be treated explicitly.
+
+The working setup pinned:
+- `--override.jovian=1778157001`
+
+Operationally, there was no comfortable sense that the network would simply advertise this loudly enough at the exact moment an operator needed it. In practice, we treated Jovian as something that needed to be pinned and documented deliberately rather than assumed to be obvious from ambient Shape docs or defaults.

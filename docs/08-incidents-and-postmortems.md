@@ -33,6 +33,8 @@ The folder named `/root/Upload` looked disposable at first glance, but container
 
 Deleting it would have destroyed the live chain state and created a much larger recovery problem.
 
+There was also a practical snapshot-handling constraint behind this. Because the VPS did not have comfortable spare disk for the whole workflow, the snapshot was downloaded to a local PC first, unpacked there, and only then uploaded to the VPS as prepared data. That made the uploaded state more valuable than a normal temporary download and increased the cost of any accidental deletion.
+
 ### Corrective actions taken
 
 1. confirmed live container mounts
@@ -58,3 +60,4 @@ Deleting it would have destroyed the live chain state and created a much larger 
 - preserve inspect backups before recreating containers
 - treat vague folder names with suspicion until mounts are verified
 - keep future Reth experiments isolated from the live geth datadir
+- explicitly document hardfork timestamps such as Jovian instead of assuming upstream docs will make them obvious at the moment they matter

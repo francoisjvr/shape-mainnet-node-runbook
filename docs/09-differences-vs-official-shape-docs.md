@@ -66,6 +66,8 @@ The live containers used explicit override flags:
 
 Using explicit overrides reduced ambiguity during troubleshooting. We did not trust embedded defaults after observing signs that bundled config might be stale or incomplete for Shape.
 
+Jovian was the sharpest example of this. In practice, there was no reassuring operator-facing indication that the hardfork would simply be surfaced clearly enough at the exact timestamp when it mattered. That is why the final working setup records the Jovian override explicitly.
+
 ## 4. Bootnode handling was explicit
 
 ### Official reference
@@ -108,6 +110,8 @@ The live datadir was `/root/Upload`.
 ### Side note
 
 That name is misleading enough that a rushed operator could delete it during cleanup. This was the single most dangerous operational footgun in the incident.
+
+There was also an operational constraint that the docs did not cover: because of VPS disk-space limits, the snapshot workflow was done by downloading the snapshot to a local PC, unpacking it there, and then uploading the unpacked data to the VPS. That means the uploaded datadir was not just a cache artifact. It represented a time-consuming staged transfer process.
 
 ## 7. Zero EL peers was not treated as failure
 
