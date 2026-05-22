@@ -1,12 +1,12 @@
 ---
 name: shape-network-mainnet-node-recovery
-description: Use when operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node built on op-node plus op-geth. Shape-specific notes, catch-up expectations, doc mismatches, and recovery pitfalls are included.
-version: 1.0.0
+description: Use when operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node built on op-node plus op-geth. Shape-specific notes, catch-up expectations, doc mismatches, recovery pitfalls, and Reth-prep guidance are included.
+version: 1.1.0
 author: Hermes Agent
 license: MIT
 metadata:
   hermes:
-    tags: [shape-network, shape-mainnet, op-node, op-geth, recovery, runbook, docker, rollup]
+    tags: [shape-network, shape-mainnet, op-node, op-geth, op-reth, recovery, runbook, docker, rollup]
     related_skills: [shape-ai-agent, hermes-agent]
 ---
 
@@ -22,6 +22,7 @@ Use it when a self-hosted Shape mainnet node needs to be:
 - recovered after outage or partial corruption
 - compared against official Shape docs
 - documented so future operators do not repeat the same mistakes
+- prepared for a later Reth migration without throwing away the current stable geth fallback
 
 This skill reflects a real recovered Shape mainnet stack using:
 - `op-geth`
@@ -42,15 +43,16 @@ Use this skill when:
 - you need to document the working Shape mainnet setup for future reuse
 - the node appears alive but you need to tell the difference between real catch-up and fake movement
 - a fork-era mismatch like Jovian might be involved
+- the user wants to prepare for later Shape mainnet Reth work without losing rollback safety
 
 Do not use this skill for:
 - Shape Sepolia unless you are deliberately borrowing only the reasoning pattern
 - generic Ethereum mainnet geth advice
-- Reth-first migration procedures that need their own dedicated workflow
+- a full Reth bring-up playbook when a dedicated Reth-specific skill/repo is available
 
 ## Known-good Shape-specific runtime reference
 
-This was the final healthy reference point.
+This was the final healthy geth-based reference point.
 
 ### op-geth
 - image: `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101603.4`
@@ -125,7 +127,7 @@ Run checks in this order.
 
 ### 1. Container state
 ```bash
-docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}' | grep 'shape-mainnet-op-'
+docker ps -a --format 'table {{.Names}}	{{.Status}}	{{.Image}}' | grep 'shape-mainnet-op-'
 ```
 
 What you want:
@@ -154,9 +156,7 @@ Interpretation:
 
 ### 4. Local execution head
 ```bash
-curl -s -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-  http://127.0.0.1:8545
+curl -s -H 'Content-Type: application/json'   -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'   http://127.0.0.1:8545
 ```
 
 Convert to decimal if reporting to the user.
@@ -170,16 +170,12 @@ echo "local=$LOCAL public=$PUBLIC lag=$((PUBLIC-LOCAL))"
 
 ### 6. Sync state
 ```bash
-curl -s -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}' \
-  http://127.0.0.1:8545
+curl -s -H 'Content-Type: application/json'   -d '{"jsonrpc":"2.0","method":"eth_syncing","params":[],"id":1}'   http://127.0.0.1:8545
 ```
 
 ### 7. Rollup sync status
 ```bash
-curl -s -H 'Content-Type: application/json' \
-  -d '{"jsonrpc":"2.0","method":"optimism_syncStatus","params":[],"id":1}' \
-  http://127.0.0.1:9545
+curl -s -H 'Content-Type: application/json'   -d '{"jsonrpc":"2.0","method":"optimism_syncStatus","params":[],"id":1}'   http://127.0.0.1:9545
 ```
 
 ### 8. Logs
@@ -242,6 +238,30 @@ Stuck but pretending to be alive:
 - repetitive logs with no real advancement
 - op-node churns but lag does not improve
 - `unsafe_l2` moves while execution stays pinned
+
+## Decision tree
+
+### If containers are down
+- check disk first
+- if root disk is full, treat storage as primary blocker
+- if geth still exits `127` after storage relief, treat container recreation as likely required
+
+### If execution head is flat
+- compare against public Shape head
+- inspect `unsafe_l2`
+- if `unsafe_l2` moves while execution stays flat, do not report healthy catch-up
+
+### If peer count is zero
+- on current Shape mainnet this can still be normal
+- pivot from peer-count thinking to engine/state/head-advancement thinking
+
+### If a big folder looks deletable
+- prove mounts first
+- if `/root/Upload -> /data`, stop and preserve it
+
+### If the task becomes a Reth migration
+- preserve the current geth stack as rollback anchor
+- split the work into a Reth-specific track rather than rewriting history
 
 ## Recovery procedure that actually worked
 
@@ -309,6 +329,19 @@ Track:
 
 Repeat every 2 to 5 minutes at least 3 times.
 
+## Incident timeline summary
+
+- user-uploaded geth datadir existed at `/root/Upload`
+- folder name looked temporary but was actually production-critical
+- restart attempt failed because root disk was full
+- safe non-live Reth experiment paths were removed to restore space
+- geth still failed with `Exited (127)` after disk relief
+- container inspect was backed up
+- broken geth container was recreated while preserving `/root/Upload`
+- op-node was started only after geth was alive enough again
+- execution head began moving clearly
+- later verification showed local and public execution heads matched with `eth_syncing = false`
+
 ## Shape docs vs operational reality
 
 Important differences to remember:
@@ -334,6 +367,29 @@ There was no comfortable operator-facing sense that Jovian timing would be obvio
 ### 5. Storage workflow was nontrivial
 Because of VPS disk limits, the snapshot was downloaded locally, unpacked locally, then uploaded unpacked to the VPS.
 
+## Reth-prep branch
+
+This skill is mainly for the geth-based recovered mainnet stack, but it should prepare you for the next likely task.
+
+### Separate Reth goals from geth rescue goals
+Get clear whether the user wants:
+- the current node healthy again
+- or the new Reth path stood up safely in parallel
+
+Those are different jobs.
+
+### Preserve rollback safety
+Until Reth is healthy:
+- keep `/root/Upload` intact
+- keep the known-good geth runtime documented
+- isolate Reth paths and ports
+
+### High-signal Reth warnings already learned
+- `unsafe_l2` moving while execution head stays flat is not success
+- re-extracting the same snapshot is not automatically a fix
+- `op-reth` chain-spec and hardfork handling may need explicit updates
+- Shape mainnet EL peer count alone is not the right health discriminator
+
 ## Common pitfalls
 
 1. **Deleting `/root/Upload` because the name looks temporary**
@@ -357,6 +413,9 @@ Because of VPS disk limits, the snapshot was downloaded locally, unpacked locall
 7. **Assuming docs always mention active hardfork timing clearly enough**
    Jovian was the counterexample.
 
+8. **Collapsing geth rescue and Reth migration into one undocumented blob**
+   Preserve the proven path while iterating on the next path.
+
 ## Verification checklist
 
 - [ ] Confirmed whether `/root/Upload` is mounted as `/data`
@@ -370,4 +429,5 @@ Because of VPS disk limits, the snapshot was downloaded locally, unpacked locall
 - [ ] Interpreted results over repeated samples, not one snapshot
 - [ ] Reported Shape block numbers in decimal
 - [ ] Did not equate zero peers with failure automatically
+- [ ] Preserved rollback safety if the task was actually Reth prep
 - [ ] Treated this as **Shape Network specific** rather than generic node advice

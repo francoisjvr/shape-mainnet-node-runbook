@@ -1,56 +1,98 @@
 # Reth Migration Staging Notes
 
-This file is intentionally future-facing.
+This document is intentionally a staging bridge, not the complete Reth playbook.
 
-The current healthy stack is geth-based. Do not destabilize it casually. Any Reth work should happen in isolation first.
+The dedicated Reth path now has its own companion repo and should be treated as the primary working area for upcoming Reth work:
+- `shape-mainnet-op-reth-journey`
 
-## Current posture
+Use this file to understand how the future Reth work relates to the currently recovered geth stack.
 
-- production recovery used `op-geth`
-- a separate staging directory was created for future uploaded Reth data
-- staging path:
+## Why Reth is separate
 
-```text
-/root/shape-mainnet-op-reth-upload
-```
+The geth recovery and the Reth migration are related, but they are not the same problem.
 
-## Why stage separately
+This repo exists to preserve the known-good geth recovery path.
 
-Because the worst possible migration mistake would be confusing experiment data with the current live geth datadir.
+The Reth track exists to answer a different question:
+- how to bring up a usable Shape mainnet Reth stack without losing the current geth safety net
 
-Keep these worlds separate:
-- current working geth data: `/root/Upload`
-- future Reth staging data: `/root/shape-mainnet-op-reth-upload`
+## Current staging facts
 
-## Migration rules
+- A dedicated staging directory was created for later manual upload:
+  - `/root/shape-mainnet-op-reth-upload`
+- The active geth datadir remained:
+  - `/root/Upload`
+- The user preference is to try **Reth first** when both Reth and geth are viable options for future Shape experiments.
+- The user only wants status reporting on the new Reth process unless they explicitly ask about the old geth stack.
 
-1. never test Reth by repointing the existing geth container blindly
-2. never reuse `/root/Upload` for early migration experiments
-3. do not delete the proven geth state until a cutover is verified and reversible
-4. record exact client versions and startup flags for every Reth experiment
-5. keep rollback to geth simple
+## Hard rule
 
-## Suggested cutover plan
+Do not destroy the working geth stack just because Reth is the next desired state.
 
-1. upload unpacked Reth data into the dedicated staging directory
-2. validate ownership, structure, and expected size
-3. inspect whether the intended Reth client and OP Stack integration expect any path normalization or rename
-4. run Reth in a separate, non-destructive staging configuration first
-5. verify RPC, sync behavior, engine compatibility, and metrics
-6. define rollback before any production swap
-7. only then consider replacing the execution client in the main stack
+Until Reth proves healthy, the current geth recovery should remain the rollback anchor.
 
-## Unknowns to answer before real cutover
+## What Reth prep must get right
 
-- exact Shape compatibility expectations for the chosen Reth build
-- whether additional Shape-specific flags or overrides are required
-- how health signals differ from `op-geth`
-- whether snapshot/import assumptions differ materially from geth
+1. correct binary family
+   - prefer `op-reth`, not generic upstream `reth`, unless there is a very deliberate reason otherwise
 
-## Exit criteria for a safe migration
+2. chain identity
+   - `op-node --network=shape-mainnet` can be valid while `op-reth --chain shape-mainnet` is not
+   - tested behavior showed `op-reth --chain shape` as the built-in Shape chain name
 
-- head progression matches trusted public reference
-- op-node interacts cleanly with the execution client
-- restart behavior is predictable
-- disk growth is acceptable
-- rollback to the current geth setup remains easy
+3. hardfork handling
+   - explicit `Jovian` treatment mattered
+   - relying only on stale built-in defaults was unsafe
+
+4. execution health interpretation
+   - `unsafe_l2` movement alone is not enough
+   - execution `eth_blockNumber` must move meaningfully
+
+5. isolation
+   - Reth work should use separate paths and avoid trampling the current geth datadir
+
+## Reth-specific failure patterns already learned
+
+These are high-signal warnings from previous Shape Reth investigations.
+
+### Bad pattern: fake movement
+- `op-node` inserts unsafe payloads
+- `unsafe_l2` advances
+- execution `eth_blockNumber` stays flat or zero
+
+Interpretation:
+- not healthy
+- likely canonical-head, forkchoice, chain-spec, or engine-state trouble
+
+### Bad pattern: wrong assumptions about peers
+- `net_peerCount = 0` alone is not proof of misconfiguration on Shape mainnet
+- if execution remains frozen, focus on engine state rather than mythical missing EL peers
+
+### Bad pattern: snapshot rerestore optimism
+- re-extracting the same Reth snapshot is not automatically a fix
+- identical re-restore can reproduce the same stuck execution state
+
+### Bad pattern: chain-spec complacency
+- newer fork eras can require explicit custom chain-spec updates
+- Jovian was the main warning here
+
+## What this repo will continue to do
+
+This geth runbook should retain:
+- the stable fallback path
+- exact incident history
+- precise description of why `/root/Upload` must be preserved until intentionally retired
+
+## Where to continue Reth work
+
+Continue in the companion repo:
+- `shape-mainnet-op-reth-journey`
+
+That repo is where the following should evolve rapidly:
+- preflight checklist
+- chain-spec handling
+- upload folder preparation
+- compose and port isolation notes
+- staged bring-up
+- cutover criteria
+- rollback criteria
