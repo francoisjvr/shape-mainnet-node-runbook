@@ -107,6 +107,13 @@ Important flags:
 2. **Shape mainnet execution peer count can be zero and still be normal.**
    Do not treat `net_peerCount = 0` as automatic failure on current Shape mainnet.
 
+   Shape-specific clarification from a developer contact was:
+   - execution peering is not currently enabled
+   - sequencing is centralized right now
+   - there are no EL bootnodes right now
+   - ELs should therefore have no peers right now
+   - EL bootnodes are expected only later, once Shape enables EL sync
+
 3. **Jovian must be treated explicitly.**
    In practice there was not enough reassuring operator-facing indication that Jovian would simply be obvious at the exact timestamp that mattered.
 
@@ -252,7 +259,7 @@ Stuck but pretending to be alive:
 - if `unsafe_l2` moves while execution stays flat, do not report healthy catch-up
 
 ### If peer count is zero
-- on current Shape mainnet this can still be normal
+- on current Shape mainnet this can still be normal, and may be the intended state
 - pivot from peer-count thinking to engine/state/head-advancement thinking
 
 ### If a big folder looks deletable
@@ -396,7 +403,7 @@ Until Reth is healthy:
    This is the worst mistake in this workflow.
 
 2. **Treating zero peers as the main bug**
-   On current Shape mainnet, that can be expected.
+   On current Shape mainnet, that can be expected and may be intentional because EL peering is not yet enabled.
 
 3. **Calling the node healthy because `unsafe_l2` moves**
    Execution head movement matters more.

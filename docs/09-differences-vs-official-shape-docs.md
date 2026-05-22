@@ -127,6 +127,13 @@ Many generic node guides teach operators to worry immediately about low peer cou
 
 Do not import Ethereum mainnet instincts blindly into every OP Stack chain.
 
+Additional Shape-specific clarification from a Shape developer contact was that the execution layer does not currently have peering enabled because sequencing is centralized. In other words:
+- there are no EL bootnodes right now
+- ELs should have no peers right now
+- EL bootnodes are expected only later, once Shape enables EL sync
+
+That makes `net_peerCount = 0` not just tolerated, but the expected current-state behavior for Shape mainnet EL.
+
 ## 8. Docs do not replace local truth
 
 The official docs are a starting point.
