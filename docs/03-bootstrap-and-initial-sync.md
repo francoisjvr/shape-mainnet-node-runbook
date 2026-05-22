@@ -51,6 +51,73 @@ During a healthy startup you should expect:
 - `eth_syncing` to return an object before later returning `false`
 - `safe_l2` and `finalized_l2` to lag `unsafe_l2`
 
+## Catch-up expectations and rough timeframes
+
+These are operator expectations, not protocol guarantees.
+
+### If restoring from an already-useful uploaded datadir
+
+This was the path used in the documented recovery.
+
+Expected phases:
+
+1. **Immediate startup phase: first few minutes**
+   - geth container becomes runnable
+   - RPC on `8545` starts answering again
+   - `eth_syncing` may still be active
+   - op-node may still be behind even after geth answers
+
+2. **Visible forward-progress phase: next several minutes**
+   - local execution head should start moving upward, not stay frozen
+   - geth logs should show fresh chain import activity
+   - op-node logs should stop looking stuck and start processing payloads again
+
+3. **Convergence phase: tens of minutes to a few hours depending on backlog**
+   - local block number should move toward public Shape RPC
+   - `unsafe_l2` should approach the current execution head
+   - `safe_l2` and `finalized_l2` can remain behind for a while even when the node is fundamentally healthy
+
+4. **Steady-state healthy phase**
+   - local execution head matches or nearly matches public Shape RPC
+   - `eth_syncing = false`
+   - ongoing logs show normal incremental processing rather than startup failure loops
+
+### What we actually observed in the successful recovery
+
+After the broken geth container was recreated and the stack was back up:
+- the node resumed serving RPC first
+- block progression became visible within about a minute of sampling
+- sampled head movement over roughly one minute went from `28,521,198` to `28,521,248`, then `28,521,322`, then `28,521,592`, then `28,521,661`
+
+That matters because it gives a practical benchmark: after a successful restart from a good uploaded datadir, you should expect to see obvious movement fairly quickly. If the head stays flat for a long period while public Shape RPC continues moving, that is not normal catch-up behavior.
+
+### If doing a true fresh build instead of restoring prepared state
+
+Expect this to take much longer and be much more sensitive to:
+- disk headroom
+- IOPS
+- upstream L1 quality
+- snapshot availability or lack of it
+
+For this reason, the runbook strongly prefers restoring useful prepared state when available instead of pretending a cold rebuild is equally cheap.
+
+### Important interpretation rule
+
+Do not confuse these two states:
+- **healthy but still converging**
+- **stuck and pretending to be alive**
+
+Healthy but still converging usually looks like:
+- block numbers keep rising
+- logs keep changing in a meaningful way
+- gap to public RPC shrinks over time
+
+Stuck usually looks like:
+- same head over repeated checks
+- repetitive logs with no real advancement
+- op-node churn without meaningful reduction in lag
+- `eth_syncing` never resolves and the public gap does not improve
+
 ## What to treat as abnormal early
 
 - `no space left on device`

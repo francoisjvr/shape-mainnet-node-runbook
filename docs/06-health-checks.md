@@ -56,6 +56,11 @@ Expected result:
 - small lag while syncing
 - `0` lag when fully caught up
 
+Interpretation guide:
+- if lag is shrinking across repeated checks, the node is probably catching up normally
+- if lag is flat or growing for a long period, investigate instead of waiting forever
+- a single snapshot is less useful than 3 to 5 checks spaced a few minutes apart
+
 ## 6. Is geth still syncing?
 
 ```bash
@@ -85,6 +90,34 @@ curl -s -H 'Content-Type: application/json'   -d '{"jsonrpc":"2.0","method":"opt
 Expected result:
 - `unsafe_l2` advances normally
 - `safe_l2` and `finalized_l2` can trail behind a bit without it being an incident
+
+Operator expectation:
+- do not demand immediate equality between `unsafe_l2`, `safe_l2`, and `finalized_l2`
+- the important question is whether the whole picture is moving in the right direction over time
+
+## 8.5 Suggested catch-up sampling routine
+
+When you are trying to decide whether the node is genuinely recovering, sample it repeatedly instead of judging from one check.
+
+Suggested routine:
+
+1. record local execution head in decimal
+2. record public Shape execution head in decimal
+3. record lag
+4. record `eth_syncing`
+5. record `unsafe_l2`, `safe_l2`, and `finalized_l2`
+6. wait 2 to 5 minutes
+7. repeat at least 3 times
+
+What you want to see:
+- local head rising
+- lag shrinking or already near zero
+- logs continuing to show meaningful progress
+
+What should worry you:
+- no head movement across repeated samples
+- lag staying large without improvement
+- op-node logs repeating without payload progress
 
 ## 9. Geth logs
 
@@ -125,5 +158,14 @@ If all of these are true, the stack is probably healthy:
 - `eth_syncing = false` once caught up
 - op-node continues processing payloads
 - disk has comfortable free space
+
+## Recovery-time expectations
+
+When recovering from a good uploaded datadir rather than a cold rebuild, expect:
+- RPC availability before full convergence
+- visible head movement fairly quickly once the stack is truly healthy
+- `safe_l2` and `finalized_l2` to trail for some time after execution is already close or caught up
+
+In the documented successful recovery, block movement was visible within roughly a minute of active sampling, and the node later converged all the way to `0` lag against public Shape RPC.
 
 If the first thing you see is `no space left on device`, stop there. That is not a secondary symptom. It is often the actual problem.

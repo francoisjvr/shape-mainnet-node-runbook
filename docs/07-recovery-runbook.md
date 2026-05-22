@@ -127,6 +127,38 @@ Verify all of these:
 - geth logs show fresh chain progress
 - op-node logs show processed payloads
 
+### What to expect after the stack comes back up
+
+Do not expect every signal to become perfect instantly.
+
+Normal recovery progression:
+1. RPC starts responding again
+2. execution head starts moving again
+3. op-node resumes meaningful payload processing
+4. lag to public RPC shrinks over time
+5. `eth_syncing` eventually returns `false`
+6. `safe_l2` and `finalized_l2` continue to settle behind `unsafe_l2`
+
+### Practical timeframe guidance
+
+For this documented recovery path using a preserved uploaded datadir:
+- signs of life should appear quickly once the fix is real
+- visible head movement should be apparent within minutes, not half a day of blind hope
+- full convergence can still take longer depending on backlog and upstream conditions
+
+The important thing is not demanding instant zero lag. The important thing is seeing real movement.
+
+### What we actually observed
+
+During the successful recovery, sampled block progression over roughly a minute showed:
+- `28,521,198`
+- `28,521,248`
+- `28,521,322`
+- `28,521,592`
+- `28,521,661`
+
+That is the kind of movement pattern you want to see. It does not have to match those exact numbers, but the pattern should look alive rather than frozen.
+
 ## Step 10: remove temporary watchers once stable
 
 If a progress cron or similar watcher was created just for the incident, remove it once the node is back to healthy steady state. Otherwise you keep stale operational noise around forever.
