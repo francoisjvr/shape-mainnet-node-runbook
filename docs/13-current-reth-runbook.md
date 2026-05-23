@@ -98,6 +98,14 @@ Path meanings:
 - `OP_NODE_RUNTIME_DIR`: persistent `op-node` state
 - `CONFIG_DIR`: runtime config, rollup config, genesis file, and JWT secret
 
+If you still want to keep `/root/Upload`, treat it as optional support storage only:
+
+- download cache
+- manual transfer landing zone
+- backup copy of a known-good snapshot or datadir
+
+Do **not** use `/root/Upload` as the default live `op-reth` mount on a clean install when you have enough disk for the standard layout.
+
 ## Required config artifacts
 
 Keep these runtime files in `CONFIG_DIR`:

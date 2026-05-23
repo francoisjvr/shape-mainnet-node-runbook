@@ -1,6 +1,6 @@
 ---
 name: shape-network-mainnet-node-recovery
-description: Use when operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node. Covers Shape-specific health checks, recovery pitfalls, doc mismatches, geth-era recovery facts, and Reth-era operating guidance.
+description: Use when setting up, operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node. Covers Shape-specific setup layout, health checks, recovery pitfalls, doc mismatches, geth-era recovery facts, and Reth-era operating guidance.
 version: 1.2.0
 author: Hermes Agent
 license: MIT
@@ -17,6 +17,7 @@ metadata:
 This skill is specifically for **Shape Network mainnet**, not generic Ethereum and not generic OP Stack advice.
 
 Use it when a self-hosted Shape mainnet node needs to be:
+- set up from scratch or re-laid out cleanly
 - checked for health
 - restarted carefully
 - recovered after outage or partial corruption
@@ -36,6 +37,7 @@ The biggest lesson is simple: on Shape, **live operational truth beats assumptio
 ## When to Use
 
 Use this skill when:
+- you need a clean standard directory and mount layout for a fresh Shape mainnet node
 - the user says the Shape mainnet node is down, stalled, or behind
 - `op-node` and `op-geth` need health verification
 - Docker restart fails or the node does not come back cleanly
@@ -98,6 +100,44 @@ Important flags:
 - `--override.holocene=1739880000`
 - `--override.isthmus=1774530000`
 - `--override.jovian=1778157001`
+
+## Standard setup layout for new installs
+
+For a clean Shape mainnet setup, prefer explicit standard paths instead of mounting the live node directly from `/root/Upload`.
+
+Recommended layout:
+
+```bash
+export RETH_RUNTIME_DIR=/root/shape-mainnet-op-reth-data
+export RETH_STAGING_DIR=/root/shape-mainnet-op-reth-staging
+export OP_NODE_RUNTIME_DIR=/root/shape-mainnet-op-node-data
+export CONFIG_DIR=/root/.shape-mainnet-op-reth
+export OPTIONAL_UPLOAD_DIR=/root/Upload
+
+mkdir -p \
+  "$RETH_RUNTIME_DIR" \
+  "$RETH_STAGING_DIR" \
+  "$OP_NODE_RUNTIME_DIR" \
+  "$CONFIG_DIR" \
+  "$OPTIONAL_UPLOAD_DIR"
+```
+
+Use the paths this way:
+
+- mount `RETH_RUNTIME_DIR` into the live `op-reth` container as `/data`
+- mount `OP_NODE_RUNTIME_DIR` into the live `op-node` container as `/data`
+- keep `CONFIG_DIR` for `jwt.hex`, `reth.runtime.toml`, `rollup.runtime.json`, and `genesis-l2.runtime.json`
+- use `RETH_STAGING_DIR` for snapshot extraction and validation before promotion
+- use `/root/Upload` only as an optional download cache, backup copy, or manual transfer landing zone
+
+If the machine has enough disk, the cleanest model is:
+
+1. download into `/root/Upload` or `RETH_STAGING_DIR`
+2. extract and validate there
+3. move the validated datadir into `RETH_RUNTIME_DIR`
+4. keep `/root/Upload` only as a backup or scratch area, not the primary live mount
+
+This is more standard, easier to document, and less confusing than running production directly from `/root/Upload`.
 
 ## Non-negotiable Shape-specific facts
 
