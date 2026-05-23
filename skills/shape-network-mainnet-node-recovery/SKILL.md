@@ -1,7 +1,7 @@
 ---
 name: shape-network-mainnet-node-recovery
-description: Use when operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node built on op-node plus op-geth. Shape-specific notes, catch-up expectations, doc mismatches, recovery pitfalls, and Reth-prep guidance are included.
-version: 1.1.0
+description: Use when operating, recovering, documenting, or sanity-checking a self-hosted Shape Network mainnet node. Covers Shape-specific health checks, recovery pitfalls, doc mismatches, geth-era recovery facts, and Reth-era operating guidance.
+version: 1.2.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -22,7 +22,7 @@ Use it when a self-hosted Shape mainnet node needs to be:
 - recovered after outage or partial corruption
 - compared against official Shape docs
 - documented so future operators do not repeat the same mistakes
-- prepared for a later Reth migration without throwing away the current stable geth fallback
+- analyzed across both geth-era recovery context and the current Reth-first operating model
 
 This skill reflects a real recovered Shape mainnet stack using:
 - `op-geth`
@@ -43,7 +43,7 @@ Use this skill when:
 - you need to document the working Shape mainnet setup for future reuse
 - the node appears alive but you need to tell the difference between real catch-up and fake movement
 - a fork-era mismatch like Jovian might be involved
-- the user wants to prepare for later Shape mainnet Reth work without losing rollback safety
+- you need to preserve rollback safety while evaluating a change in execution-client path
 
 Do not use this skill for:
 - Shape Sepolia unless you are deliberately borrowing only the reasoning pattern
@@ -266,7 +266,7 @@ Stuck but pretending to be alive:
 - prove mounts first
 - if `/root/Upload -> /data`, stop and preserve it
 
-### If the task becomes a Reth migration
+### If the task includes a Reth migration
 - preserve the current geth stack as rollback anchor
 - split the work into a Reth-specific track rather than rewriting history
 
@@ -374,16 +374,16 @@ There was no comfortable operator-facing sense that Jovian timing would be obvio
 ### 5. Storage workflow was nontrivial
 Because of VPS disk limits, the snapshot was downloaded locally, unpacked locally, then uploaded unpacked to the VPS.
 
-## Reth-prep branch
+## Reth operating branch
 
-This skill is mainly for the geth-based recovered mainnet stack, but it should prepare you for the next likely task.
+This skill includes geth-era recovery context and the Reth-specific distinctions that matter during current Shape mainnet operations.
 
-### Separate Reth goals from geth rescue goals
-Get clear whether the user wants:
-- the current node healthy again
-- or the new Reth path stood up safely in parallel
+### Separate Reth operations from geth rescue work
+Keep these as distinct tracks:
+- restoring a known geth-based stack
+- standing up or validating a Reth-based stack
 
-Those are different jobs.
+They have different health signals and different rollback considerations.
 
 ### Preserve rollback safety
 Until Reth is healthy:
@@ -436,5 +436,5 @@ Until Reth is healthy:
 - [ ] Interpreted results over repeated samples, not one snapshot
 - [ ] Reported Shape block numbers in decimal
 - [ ] Did not equate zero peers with failure automatically
-- [ ] Preserved rollback safety if the task was actually Reth prep
+- [ ] Preserved rollback safety when execution-client changes were in scope
 - [ ] Treated this as **Shape Network specific** rather than generic node advice
