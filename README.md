@@ -1,18 +1,18 @@
 # Shape Mainnet Node Runbook
 
-Detailed operator runbook for a self-hosted Shape mainnet node using `op-node` and `op-geth`.
+Detailed operator runbook for the **current self-hosted Shape mainnet Reth stack**.
 
 This repo exists because the official docs are not enough on their own when the node is sick at 2am and you need exact, working, battle-tested steps.
 
 ## Scope
 
-This runbook covers:
-- the final known-good Shape mainnet `op-node` + `op-geth` stack
-- the exact outage that was caused by disk exhaustion plus a broken geth container
-- the recovery path that actually worked
-- day-2 operations and health checks
-- differences between official Shape references and the real-world setup that ended up stable
-- the separate future Reth track that will be tested later
+This repo now covers:
+- the current known-good **`op-reth` + `op-node`** runtime
+- snapshot-first bootstrap for Shape mainnet
+- health checks that go beyond "the container is up"
+- provider requirements for L1 RPC + beacon access
+- cutover and retirement guidance for the old geth lane
+- historical recovery context from the earlier geth-era incidents
 
 This repo does **not** include:
 - secrets
@@ -22,45 +22,49 @@ This repo does **not** include:
 
 ## Start here
 
-Primary path:
+Current primary path:
+- [Current Reth runbook](docs/13-current-reth-runbook.md)
+- [Health checks](docs/06-health-checks.md)
+- [Operator playbook](docs/12-operator-playbook.md)
+
+Historical / archival context:
 - [Overview](docs/00-overview.md)
 - [Architecture](docs/01-architecture.md)
 - [Bootstrap and initial sync](docs/03-bootstrap-and-initial-sync.md)
 - [Final working config](docs/04-final-working-config.md)
-- [Health checks](docs/06-health-checks.md)
 - [Recovery runbook](docs/07-recovery-runbook.md)
 - [Differences vs official Shape docs](docs/09-differences-vs-official-shape-docs.md)
 - [Incident timeline](docs/10-incident-timeline.md)
 - [Reth migration staging notes](docs/11-reth-migration-staging-notes.md)
-- [Operator playbook](docs/12-operator-playbook.md)
 
 Fast triage tools:
 - [Decision tree](docs/02-decision-tree.md)
 - [Incident and postmortem](docs/08-incidents-and-postmortems.md)
 
-## Final verified state
+## Current verified state
 
-Last verified: `2026-05-22`
+Last verified against the live server: `2026-05-23`
 
-- `op-geth` image: `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101603.4`
+- `op-reth` image: `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-reth:v2.2.2`
 - `op-node` image: `us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.18.0`
-- execution head matched public Shape RPC
+- `op-node --syncmode=consensus-layer`
+- local RPC ports in use: `18545`, `18546`, `18551`, `19545`, `17300`, `19222`
+- execution head, `unsafe_l2`, `safe_l2`, and `finalized_l2` were all advancing sanely
 - `eth_syncing = false`
-- `net_peerCount = 0` was expected for this deployment shape
-- preserved geth datadir lived at `/root/Upload`
+- Shape mainnet can still show `net_peerCount = 0` on the execution client without that alone meaning failure
 
 ## Why this repo matters
 
-The recovery only succeeded after separating **documentation assumptions** from **what the live node was actually doing**.
+The main lesson from the last round of work was simple:
 
-The key lessons were:
-- `/root/Upload` was not a random upload folder. It was the live geth datadir.
-- `no space left on device` was the immediate reason Docker could not restart the stack.
-- after free space was recovered, `shape-mainnet-op-geth` still failed because the container itself was broken and had to be recreated
-- Shape-specific fork overrides and bootnode handling mattered
-- the public RPC is useful for comparison, but not sufficient as the only source of truth
-- the snapshot handling workflow mattered because VPS disk limits forced us to download to a local PC, unpack there, and upload the unpacked datadir
-- the Jovian hardfork needed explicit treatment because operator-facing documentation did not clearly telegraph the exact critical timestamp strongly enough
+**the live server had moved on, but the written runbook had not.**
+
+What mattered in practice:
+- the current stable path is now **Reth-first**, not geth-first
+- the node can look healthy while still being wrong unless you check head movement and public block parity
+- snapshot handling matters because interrupted downloads and disk pressure are common real operator problems
+- explicit runtime config files are safer than hand-waving about whatever built-in chain defaults happen to exist
+- private RPC is not really private unless the ports are actually restricted
 
 ## Repository layout
 
@@ -71,7 +75,6 @@ shape-mainnet-node-runbook/
 ├── config/
 ├── appendices/
 ├── templates/
-├── skills/
 └── .github/
 ```
 
@@ -80,23 +83,19 @@ shape-mainnet-node-runbook/
 1. Never commit secrets.
 2. Never publish JWT contents.
 3. Never publish provider API keys.
-4. Never delete `/root/Upload` unless you are intentionally abandoning the current geth state.
-5. Before restarting anything, check disk space first.
-6. Treat this repo as Shape Network specific operational truth, not generic OP Stack gospel.
-7. If later Reth testing diverges from this geth recovery path, document the divergence instead of silently overwriting history.
+4. Before restarting anything, check disk space first.
+5. Treat this repo as Shape-specific operational truth, not generic OP Stack gospel.
+6. Do not call an RPC "private" unless access control is actually in place.
+7. Keep old geth-era docs as history, but do not present them as the main operator path anymore.
 
 ## Reference sources
 
-Primary official references used for the comparison sections:
+Primary official references used for comparison and validation:
 - Shape docs: `https://docs.shape.network/`
 - Shape node provider page: `https://docs.shape.network/tools/node-providers`
 - Superchain registry Shape config: `https://github.com/ethereum-optimism/superchain-registry/blob/main/superchain/configs/mainnet/shape.toml`
 - Superchain registry chain list: `https://github.com/ethereum-optimism/superchain-registry/blob/main/CHAINS.md`
 - Optimism operator docs: `https://docs.optimism.io/operators/node-operators/`
-
-Reth-focused follow-on material now lives separately in:
-- `../shape-mainnet-op-reth-journey`
-- or the published repo `shape-mainnet-op-reth-journey` once pushed
 
 ## Audience
 
